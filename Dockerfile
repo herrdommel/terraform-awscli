@@ -8,7 +8,7 @@ ARG AWS_CLI_VERSION=2.31.33
 COPY aws_public_key.asc .
 
 # Install dependencies and tools
-RUN apt-get update && apt-get install -y curl gnupg unzip \
+RUN apt-get update && apt-get install -y curl gnupg unzip ca-certificates \
     && curl "https://awscli.amazonaws.com/awscli-exe-linux-$(arch)-${AWS_CLI_VERSION}.zip" -o "awscliv2.zip" \
     && curl "https://awscli.amazonaws.com/awscli-exe-linux-$(arch)-${AWS_CLI_VERSION}.zip.sig" -o "awscliv2.sig" \
     && gpg --import aws_public_key.asc \
@@ -21,13 +21,15 @@ RUN apt-get update && apt-get install -y curl gnupg unzip \
     # may be present in /usr/local/bin of the installer stage.
     && ./aws/install --bin-dir /aws-cli-bin/ \
     && curl "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${TERRAFORM_OS}_${TERRAFORM_ARCH}.zip" -o terraform.zip \
-    && unzip terraform.zip -d /usr/local/bin/
+    && unzip terraform.zip -d /terraform-cli-bin
 
 FROM debian:12-slim
 
+COPY --from=installer /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
-COPY --from=installer /usr/local/bin/terraform /usr/local/bin/
+COPY --from=installer /terraform-cli-bin/terraform /usr/local/bin/
+COPY --from=installer /terraform-cli-bin/LICENSE.txt /usr/share/doc/terraform/
 
 ENTRYPOINT ["/usr/local/bin/terraform"]
 
